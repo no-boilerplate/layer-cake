@@ -1,0 +1,101 @@
+
+#   LC is YAML
+
+# Reserved characters:
+#   /   -   new route
+#   _   -   the common branch or the default action per underlying store
+
+# Conventions
+#   * Every top-level property should be either a built-in module or an extension module
+#   * All extension modules should have layer-cake-<module name> npm name
+#   * All extension modules have init(context, cake, layer) exported
+#   * _ for all layers means the common configuration of the layer which doesn't change per environment
+#   * All other top-layer-level properties are for specific environment configurations
+
+metadata:
+    _:
+        version:    1.0.0.0
+        author:     Ivan Erceg
+    dev:
+        env:    $NODE_ENV
+
+config:
+    _:
+        port: $PORT
+        logging:
+            - warn
+            - error
+    dev:
+        logging: '*'
+
+store:
+    _:
+        driver: couch
+        config:
+            url: $CACOPHONY_COUCHDB_SERVER_URL
+        behavior:
+            put:
+                before:
+                    - |
+                        input.created = context.timestamp
+                        input.updated = context.timestamp
+                    - update-hash
+
+boot:
+    _:
+        - create-store    # Idempotent
+        - upgrade-store   # Idempotent
+        - create-queues   # Idempotent
+    test:
+        - populate-store  # Idempotent
+
+analytics:
+    _:
+        inbound:
+            - verbs
+            - routes
+        outbound:
+            - verbs
+            - routes
+
+httpServer:
+    _:
+        auth:
+            header: token
+        routes:
+            /:
+                GET:
+                    get-ping
+            /version:
+                GET:
+                    get-metadata
+            /user:
+                GET: _
+                /:userId:
+                    GET: _
+                    PUT: _
+                    /contact:
+                        GET: _
+                        /:contactId:
+                            GET: _
+                            PUT: _
+                            DELETE: _
+                /search:
+                    GET:
+                        store: query
+            /conversation:
+                /:conversationId:
+                    PUT: _
+                    /message:
+                        GET: _
+                        /:messageId:
+                            GET: _
+                            PUT: _
+    dev:
+        routes:
+            /__explore:
+                GET: |
+                    console.log(context)
+
+test:
+    _: !

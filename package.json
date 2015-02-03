@@ -1,0 +1,19 @@
+{
+  "name": "layer-cake",
+  "version": "1.0.0",
+  "description": "Extensible be-all for backend developers",
+  "main": "app.litcoffee",
+  "scripts": {
+    "test": "test",
+    "dev": "NODE_ENV=dev DEBUG=layer-cake nodemon --delay 1 --watch ."
+  },
+  "author": "Ivan Erceg",
+  "license": "MIT",
+  "dependencies": {
+    "coffee-script": "^1.9.0",
+    "deep-extend": "^0.3.2",
+    "express": "^4.11.2",
+    "js-yaml": "^3.2.5",
+    "lodash": "^3.0.1"
+  }
+}
