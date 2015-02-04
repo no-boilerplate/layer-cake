@@ -20,12 +20,27 @@ Load the YAML script for layer-cake.
 	catch e
 		return console.log(e)
 
-Create context object with environment, registry and other entries that are used by the rest of the system.
+Create context object with environment, modules and other entries that are used by the rest of the system.
 
 	context =
 		env: process.env.NODE_ENV
-		registry:
+		modules:
 			httpServer: require('./lib/httpServer')
+
+Function that resolves the stack functions by their name. It first tries to resolve the name in the module that invoked it and if that fails it tries to resolves it in the registered modules.
+
+	# We had to finish creating context before defining this function
+	# as it uses context itself.
+	context.resolveStackFunction = (module, name, data) ->
+		fn = module.exports.resolveStackFunction context, name, data
+		return fn if _.isFunction(fn)
+
+		fn = _.filter context.modules, (module, name) ->
+			return module.exports.resolveStackFunction context, name, data
+
+		return fn if _.isFunction fn
+
+		throw new Error('Cannot resolve ' + name + ' name')
 
 Deep merge the common data and environment data for all the layers.
 
@@ -56,7 +71,7 @@ Evaluate all the data that can be evaluated before initializing the modules.
 Initialize all the modules of baked cake.
 
 	_.each bakedCake, (layer, name) ->
-		layerModule = context.registry[name]
+		layerModule = context.modules[name]
 		if layerModule
 			layerModule.init context, cake, layer
 	

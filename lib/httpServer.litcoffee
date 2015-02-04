@@ -3,50 +3,88 @@
 
 	express = require('express')
 	_ = require('lodash')
+	async = require('async')
 
-Module's private variables
+## Module's private variables
 
 	app = null
 
-	interpreter = (context, req, res, data) ->
+	builtInFunctions =
+		'_': (context, handlerData, req, res, nextFn) ->
+			console.log handlerData
+			res.status(501).send({})
+		'get-metadata': (context, handlerData, req, res, nextFn) ->
+			res.send(context.metadata)
+		'get-ping': (context, handlerData, req, res, nextFn) ->
+			res.send({timestamp: new Date().getTime()})
+		'skip': (context, handlerData, req, res, nextFn) ->
+			console.log handlerData
+			nextFn()
 
-		if _.isString data
-			resolvedFn = exports.resolve data
-			if resolvedFn
-				return resolvedFn context, req, res
+## Module's private functions
 
-		res.status(404).send({})
+Add Express app object routes and resolve early all the functions that will have to be called during responding to requests.
 
-	addAppRoute = (context, app, root, route, layer) ->
-		if route[0] == '/'
-			newRoot = root + route
-			_.each layer, (sublayer, subroute) ->
-				addAppRoute context, app, newRoot, subroute, sublayer
-		else
+	addRouteGroup = (context, app, group) ->
+
+		executeStack = (stack, req, res, next) ->
+			async.eachSeries stack, (fn, nextFn) ->
+				fn req, res, nextFn
+				, next
+
+		resolveStack = (stack) ->
+			return _.map stack, (data, name) ->
+				return context.resolveStackFunction module, name, data
+
+		addAppRoute = (root, route, layer) ->
 			verb = route.toLowerCase()
-			app[verb] root, (req, res) ->
-				interpreter context, req, res, layer
+			handler = layer
+
+			beforeFns = resolveStack group.before
+
+			resolvedFn = undefined
+			if _.isString handler
+				resolvedFn = exports.resolveStackFunction context, handler
+			else if _.isObject(handler) and _.isString(handler._)
+				resolvedFn = exports.resolveStackFunction context, handler._, handler
+
+			throw new Error('Cannot resolve ' + JSON.stringify(handler)) if not _.isFunction resolvedFn
+
+			afterFns = resolveStack group.after
+
+			stack = beforeFns.concat resolvedFn, afterFns
+
+			app[verb] root, (req, res, next) ->
+				executeStack stack, req, res, next
+
+		resolveRoute = (root, route, layer) ->
+			if route[0] == '/'
+				newRoot = root + route
+				_.each layer, (sublayer, subroute) ->
+					resolveRoute newRoot, subroute, sublayer
+			else
+				addAppRoute root, route, layer
+
+		_.each group.routes, (routeData, route) ->
+			resolveRoute '', route, routeData
 
 ## Module's exported methods
 
 	exports.init = (context, cake, layerData) ->
 		app = express()
 
-		_.each layerData.routes, (sublayer, subroute) ->
-			addAppRoute context, app, '', subroute, sublayer
+		_.each layerData, (group, name) ->
+			addRouteGroup context, app, group
 
 		port = context.config.port
 		app.listen port, (err) ->
 			console.log(err) if err
 			console.log 'listening on port', port
 
-	functions =
-		'_': (context, req, res) ->
-			res.status(501).send({})
-		'get-metadata': (context, req, res) ->
-			res.send(context.metadata)
-		'get-ping': (context, req, res) ->
-			res.send({timestamp: new Date().getTime()})
+	exports.resolveStackFunction = (context, name, data) ->
 
-	exports.resolve = (name) ->
-		return functions[name]
+		fn = builtInFunctions[name] || builtInFunctions['skip']
+		return undefined if not _.isFunction fn
+
+		# Return function that will forward all the passed arguments.
+		return fn.bind(undefined, context, data)

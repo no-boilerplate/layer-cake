@@ -28,74 +28,104 @@ config:
     dev:
         logging: '*'
 
+analytics:
+    _:
+        default:
+            - verbs
+            - routes
+            - duration
+
 store:
     _:
         driver: couch
         config:
             url: $CACOPHONY_COUCHDB_SERVER_URL
-        behavior:
-            put:
-                before:
-                    - |
-                        input.created = context.timestamp
-                        input.updated = context.timestamp
-                    - update-hash
+        queryStack:
+            after:
+                - |
+                    output.timestamp = context.timestamp
+            verbs:
+                GET
+        updateStack:
+            before:
+                - |
+                    input.created = context.timestamp
+                    input.updated = context.timestamp
+            verbs:
+                PUT
+                POST
+                DELETE
 
 boot:
     _:
         - create-store    # Idempotent
         - upgrade-store   # Idempotent
-        - create-queues   # Idempotent
     test:
         - populate-store  # Idempotent
 
-analytics:
-    _:
-        inbound:
-            - verbs
-            - routes
-        outbound:
-            - verbs
-            - routes
-
 httpServer:
     _:
+        noAuth:
+            before:
+                analytics: default
+                logging: info
+            after:
+                analytics: error
+                monitoring:
+                    alert:
+                        - 5xx
+            routes:
+                /:
+                    GET: get-ping
+                /version:
+                    GET: get-metadata
         auth:
-            header: token
-        routes:
-            /:
-                GET:
-                    get-ping
-            /version:
-                GET:
-                    get-metadata
-            /user:
-                GET: _
-                /:userId:
+            before:
+                auth: token
+                analytics: default
+                logging: info
+            after:
+                analytics: error
+                monitoring:
+                    alert:
+                        - 5xx
+            routes:
+                /user:
                     GET: _
-                    PUT: _
-                    /contact:
+                    /:userId:
                         GET: _
-                        /:contactId:
+                        PUT: _
+                        /contact:
                             GET: _
-                            PUT: _
-                            DELETE: _
-                /search:
-                    GET:
-                        store: query
-            /conversation:
-                /:conversationId:
-                    PUT: _
-                    /message:
-                        GET: _
-                        /:messageId:
+                            /:contactId:
+                                GET: _
+                                PUT: _
+                                DELETE: _
+                    /search:
+                        GET:
+                            _: store
+                            params:
+                                - query
+                /conversation:
+                    /:conversationId:
+                        PUT: _
+                        /message:
                             GET: _
-                            PUT: _
+                            /:messageId:
+                                GET: _
+                                PUT: _
     dev:
-        routes:
-            /__explore:
-                GET: |
-                    console.log(context)
+        noAuth:
+            before:
+                logging:
+                    - \*
+        auth:
+            before:
+                logging:
+                    - \*
+            routes:
+                /__explore:
+                    GET: res.send(context)
 
 test:
     _: !
