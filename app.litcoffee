@@ -20,23 +20,24 @@ Load the YAML script for layer-cake.
 	catch e
 		return console.log(e)
 
-Create context object with environment, modules and other entries that are used by the rest of the system.
+Create kitchen object with environment, modules and other entries that are used by the rest of the system.
 
-	context =
+	kitchen =
 		env: process.env.NODE_ENV
 		modules:
 			httpServer: require('./lib/httpServer')
+			store: require('./lib/store')
 
 Function that resolves the stack functions by their name. It first tries to resolve the name in the module that invoked it and if that fails it tries to resolves it in the registered modules.
 
-	# We had to finish creating context before defining this function
-	# as it uses context itself.
-	context.resolveStackFunction = (module, name, data) ->
-		fn = module.exports.resolveStackFunction context, name, data
+	# We had to finish creating kitchen before defining this function
+	# as it uses kitchen itself.
+	kitchen.resolveStackFunction = (module, name, data) ->
+		fn = module.exports.resolveStackFunction kitchen, name, data
 		return fn if _.isFunction(fn)
 
-		fn = _.filter context.modules, (module, name) ->
-			return module.exports.resolveStackFunction context, name, data
+		fn = _.filter kitchen.modules, (module, name) ->
+			return module.exports.resolveStackFunction kitchen, name, data
 
 		return fn if _.isFunction fn
 
@@ -49,11 +50,11 @@ Deep merge the common data and environment data for all the layers.
 	bakedCake = {}
 	_.each cake, (layer, name) ->
 		layerData = _.clone layer['_']
-		deepExtend layerData, layer[context.env]
+		deepExtend layerData, layer[kitchen.env]
 		bakedCake[name] = layerData
 
-	context.config = bakedCake.config
-	context.metadata = bakedCake.metadata
+	kitchen.config = bakedCake.config
+	kitchen.metadata = bakedCake.metadata
 
 Evaluate all the data that can be evaluated before initializing the modules.
 
@@ -61,7 +62,11 @@ Evaluate all the data that can be evaluated before initializing the modules.
 		return if not _.isObject(object)
 		_.each object, (value, name) ->
 			if _.isString(value) and not _.isEmpty(value) and value[0] == '$'
-				object[name] = process.env[value.substring(1)]
+				envVariableName = value.substring(1)
+				envVariableValue = process.env[envVariableName]
+				if _.isUndefined envVariableValue
+					throw new Error('Undefined process environment variable ' + envVariableName)
+				object[name] = envVariableValue
 			else if _.isObject(value)
 				evaluateObject value
 
@@ -71,7 +76,7 @@ Evaluate all the data that can be evaluated before initializing the modules.
 Initialize all the modules of baked cake.
 
 	_.each bakedCake, (layer, name) ->
-		layerModule = context.modules[name]
+		layerModule = kitchen.modules[name]
 		if layerModule
-			layerModule.init context, cake, layer
+			layerModule.init kitchen, cake, layer
 	

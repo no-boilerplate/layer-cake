@@ -8,7 +8,7 @@
 # Conventions
 #   * Every top-level property should be either a built-in module or an extension module
 #   * All extension modules should have layer-cake-<module name> npm name
-#   * All extension modules have init(context, cake, layer) exported
+#   * All extension modules have init(kitchen, cake, layer) exported
 #   * _ for all layers means the common configuration of the layer which doesn't change per environment
 #   * All other top-layer-level properties are for specific environment configurations
 
@@ -37,31 +37,18 @@ analytics:
 
 store:
     _:
-        driver: couch
-        config:
-            url: $CACOPHONY_COUCHDB_SERVER_URL
-        queryStack:
-            after:
-                - |
-                    output.timestamp = context.timestamp
-            verbs:
-                GET
-        updateStack:
-            before:
-                - |
-                    input.created = context.timestamp
-                    input.updated = context.timestamp
-            verbs:
-                PUT
-                POST
-                DELETE
-
-boot:
-    _:
-        - create-store    # Idempotent
-        - upgrade-store   # Idempotent
+        default:
+            driver: couch
+            config:
+                serverUrl: $CACOPHONY_COUCHDB_SERVER_URL
+                databaseName: $CACOPHONY_COUCHDB_DATABASE_NAME
+            boot:
+                - create    # Idempotent
+                - update    # Idempotent
     test:
-        - populate-store  # Idempotent
+        default:
+            boot:
+                - test-populate  # Idempotent
 
 httpServer:
     _:
@@ -90,30 +77,31 @@ httpServer:
                     alert:
                         - 5xx
             routes:
-                /user:
-                    GET: _
-                    /:userId:
-                        GET: _
-                        PUT: _
+                /user: # user is an implicit model - we don't need to define it for NoSQL
+                    GET: _ # Perform the default action - GET without an ID means "get all"
+                    /:user: # Id by convention has the same name as model - this allows automatic use.
+                        GET: _ # get user with the given ID
+                        POST: _
                         /contact:
                             GET: _
-                            /:contactId:
+                            /:contact:
                                 GET: _
-                                PUT: _
+                                POST: _
                                 DELETE: _
-                    /search:
-                        GET:
-                            _: store
-                            params:
-                                - query
-                /conversation:
-                    /:conversationId:
-                        PUT: _
-                        /message:
-                            GET: _
-                            /:messageId:
+                        /conversation:
+                            /:conversation:
                                 GET: _
-                                PUT: _
+                                POST: _
+                                /message:
+                                    GET: _
+                                    POST: _
+                                    /:message:
+                                        GET: _
+                            /search:
+                                GET:
+                                    _: store
+                                    params:
+                                        - query
     dev:
         noAuth:
             before:
@@ -125,7 +113,9 @@ httpServer:
                     - \*
             routes:
                 /__explore:
-                    GET: res.send(context)
+                    GET:
+                        _: eval
+                        params: res.send(kitchen)
 
-test:
+testing:
     _: !

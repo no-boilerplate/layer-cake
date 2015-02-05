@@ -1,20 +1,23 @@
 {
   "name": "layer-cake",
   "version": "1.0.0",
-  "description": "Extensible be-all for backend developers",
+  "description": "Extensible no-boilerplate for backend developers",
   "main": "app.litcoffee",
   "scripts": {
     "test": "test",
-    "dev": "NODE_ENV=dev DEBUG=layer-cake nodemon --delay 1 --watch ."
+    "dev": "NODE_ENV=dev DEBUG=layer-cake nodemon --delay 1 --watch .",
+    "cacophony": "NODE_ENV=dev DEBUG=layer-cake PORT=15022 nodemon --delay 1 --watch . -e js,coffee,litcoffee,lc -- ./app.litcoffee ./examples/cacophony.lc"
   },
   "author": "Ivan Erceg",
   "license": "MIT",
   "dependencies": {
     "async": "^0.9.0",
+    "body-parser": "^1.11.0",
     "coffee-script": "^1.9.0",
     "deep-extend": "^0.3.2",
     "express": "^4.11.2",
     "js-yaml": "^3.2.5",
-    "lodash": "^3.0.1"
+    "lodash": "^3.0.1",
+    "nano": "^6.0.2"
   }
 }
