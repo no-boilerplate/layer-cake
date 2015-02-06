@@ -12,7 +12,7 @@
 			console.log name, storeData
 
 			store = require('./store/driver/' + storeData.driver)
-			store.init storeData
+			store.init kitchen, storeData
 
 			if name == 'default'
 				exports.default = store

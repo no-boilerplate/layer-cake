@@ -27,6 +27,7 @@ Create kitchen object with environment, modules and other entries that are used 
 		modules:
 			httpServer: require('./lib/httpServer')
 			store: require('./lib/store')
+			error: require('./lib/error')
 
 Function that resolves the stack functions by their name. It first tries to resolve the name in the module that invoked it and if that fails it tries to resolves it in the registered modules.
 
@@ -55,6 +56,8 @@ Deep merge the common data and environment data for all the layers.
 
 	kitchen.config = bakedCake.config
 	kitchen.metadata = bakedCake.metadata
+	kitchen.error = kitchen.modules.error
+	kitchen.error.init kitchen
 
 Evaluate all the data that can be evaluated before initializing the modules.
 

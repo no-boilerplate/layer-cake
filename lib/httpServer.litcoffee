@@ -11,9 +11,7 @@
 
 	builtInFunctions =
 		'_': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
-			console.log req.body
 			kitchen.modules.store.default.act req.method, candidateModelName, req.params, req.body, (err, object) ->
-				console.log err, object
 				return res.send(err).status(500) if err
 				res.send(object)
 
@@ -28,7 +26,6 @@
 			nextFn()
 
 		'skip': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
-			console.log handlerData
 			nextFn()
 
 	isParamSubpathRegex = /^\/:/
@@ -68,8 +65,6 @@ Add Express app object routes and resolve early all the functions that will have
 			afterFns = resolveStack group.after
 
 			stack = beforeFns.concat resolvedFn, afterFns
-
-			console.log route, lastModelCandidateName
 
 			# We need a closure here as we are essentially generating a function within a loop
 			# and the lastModelCandidateName will keep changing after the function has been created.

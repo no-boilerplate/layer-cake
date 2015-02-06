@@ -16,6 +16,7 @@
     "coffee-script": "^1.9.0",
     "deep-extend": "^0.3.2",
     "express": "^4.11.2",
+    "express-jsend": "https://github.com/SoftwareMarbles/express-jsend/tarball/master",
     "js-yaml": "^3.2.5",
     "lodash": "^3.0.1",
     "nano": "^6.0.2"

@@ -42,9 +42,6 @@ store:
             config:
                 serverUrl: $CACOPHONY_COUCHDB_SERVER_URL
                 databaseName: $CACOPHONY_COUCHDB_DATABASE_NAME
-            boot:
-                - create    # Idempotent
-                - update    # Idempotent
     test:
         default:
             boot:
@@ -79,29 +76,25 @@ httpServer:
             routes:
                 /user: # user is an implicit model - we don't need to define it for NoSQL
                     GET: _ # Perform the default action - GET without an ID means "get all"
+                    POST: _ # create user with an automatic ID
                     /:user: # Id by convention has the same name as model - this allows automatic use.
                         GET: _ # get user with the given ID
+                        POST: _ # create user with the given ID
+                        DELETE: _
+                /conversation:
+                    /:conversation:
+                        GET: _
                         POST: _
-                        /contact:
+                        /message:
                             GET: _
-                            /:contact:
+                            POST: _
+                            /:message:
                                 GET: _
-                                POST: _
-                                DELETE: _
-                        /conversation:
-                            /:conversation:
-                                GET: _
-                                POST: _
-                                /message:
-                                    GET: _
-                                    POST: _
-                                    /:message:
-                                        GET: _
-                            /search:
-                                GET:
-                                    _: store
-                                    params:
-                                        - query
+                /search:
+                    GET:
+                        _: store
+                        params:
+                            - query
     dev:
         noAuth:
             before:
