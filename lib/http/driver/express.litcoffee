@@ -1,9 +1,10 @@
 
-# Routes implementation using Express
+# HTTP Express driver
 
 	express = require('express')
 	_ = require('lodash')
 	async = require('async')
+	deepExtend = require('deep-extend')
 
 ## Module's private variables
 
@@ -11,9 +12,19 @@
 
 	builtInFunctions =
 		'_': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
-			kitchen.modules.store.default.act req.method, candidateModelName, req.params, req.body, (err, object) ->
+
+			# Merge req.params and req.query
+			params = _.clone(req.query) or {}
+			params = deepExtend(params, req.params) if req.params
+
+			kitchen.modules.store.default.act req.method, candidateModelName, params, req.body, (err, result, next) ->
 				return res.send(err).status(500) if err
-				res.send(object)
+				response = {}
+				response[candidateModelName] = result
+				response.meta =
+					next: next
+					limit: params.limit
+				res.send(response)
 
 		'get-metadata': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
 			res.send(kitchen.metadata)
@@ -57,8 +68,8 @@ Add Express app object routes and resolve early all the functions that will have
 			resolvedFn = undefined
 			if _.isString handler
 				resolvedFn = exports.resolveStackFunction kitchen, handler, handler
-			else if _.isObject(handler) and _.isString(handler._)
-				resolvedFn = exports.resolveStackFunction kitchen, handler._, handler
+			else if _.isObject(handler) and _.isString(handler.action)
+				resolvedFn = exports.resolveStackFunction kitchen, handler.action, handler
 
 			throw new Error('Cannot resolve ' + JSON.stringify(handler)) if not _.isFunction resolvedFn
 
@@ -88,13 +99,13 @@ Add Express app object routes and resolve early all the functions that will have
 
 ## Module's exported methods
 
-	exports.init = (kitchen, cake, layer) ->
+	exports.init = (kitchen, driverData) ->
 		app = express()
 
 		bodyParser = require('body-parser')
 		app.use bodyParser.json()
 
-		_.each layer, (group, name) ->
+		_.each driverData.groups, (group, name) ->
 			addRouteGroup kitchen, app, group
 
 		port = kitchen.config.port

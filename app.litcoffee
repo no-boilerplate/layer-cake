@@ -25,7 +25,7 @@ Create kitchen object with environment, modules and other entries that are used 
 	kitchen =
 		env: process.env.NODE_ENV
 		modules:
-			httpServer: require('./lib/httpServer')
+			http: require('./lib/http')
 			store: require('./lib/store')
 			error: require('./lib/error')
 
@@ -50,7 +50,7 @@ Deep merge the common data and environment data for all the layers.
 
 	bakedCake = {}
 	_.each cake, (layer, name) ->
-		layerData = _.clone layer['_']
+		layerData = _.clone layer.common
 		deepExtend layerData, layer[kitchen.env]
 		bakedCake[name] = layerData
 

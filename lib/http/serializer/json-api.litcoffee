@@ -1,0 +1,6 @@
+
+# json:api serializer
+
+## Input
+
+	

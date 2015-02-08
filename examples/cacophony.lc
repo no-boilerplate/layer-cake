@@ -13,14 +13,14 @@
 #   * All other top-layer-level properties are for specific environment configurations
 
 metadata:
-    _:
+    common:
         version:    1.0.0.0
         author:     Ivan Erceg
     dev:
         env:    $NODE_ENV
 
 config:
-    _:
+    common:
         port: $PORT
         logging:
             - warn
@@ -29,86 +29,91 @@ config:
         logging: '*'
 
 analytics:
-    _:
+    common:
         default:
             - verbs
             - routes
             - duration
 
 store:
-    _:
+    common:
         default:
             driver: couch
             config:
                 serverUrl: $CACOPHONY_COUCHDB_SERVER_URL
                 databaseName: $CACOPHONY_COUCHDB_DATABASE_NAME
+                modelField: 'model'
+                createNonModelViewsOnDemand: true
     test:
         default:
             boot:
                 - test-populate  # Idempotent
 
-httpServer:
-    _:
-        noAuth:
-            before:
-                analytics: default
-                logging: info
-            after:
-                analytics: error
-                monitoring:
-                    alert:
-                        - 5xx
-            routes:
-                /:
-                    GET: get-ping
-                /version:
-                    GET: get-metadata
-        auth:
-            before:
-                auth: token
-                analytics: default
-                logging: info
-            after:
-                analytics: error
-                monitoring:
-                    alert:
-                        - 5xx
-            routes:
-                /user: # user is an implicit model - we don't need to define it for NoSQL
-                    GET: _ # Perform the default action - GET without an ID means "get all"
-                    POST: _ # create user with an automatic ID
-                    /:user: # Id by convention has the same name as model - this allows automatic use.
-                        GET: _ # get user with the given ID
-                        POST: _ # create user with the given ID
-                        DELETE: _
-                /conversation:
-                    /:conversation:
-                        GET: _
-                        POST: _
-                        /message:
-                            GET: _
-                            POST: _
-                            /:message:
+http:
+    common:
+        default:
+            driver: express
+            common:
+                serializer: json-api
+            groups:
+                noAuth:
+                    before:
+                        analytics: default
+                        logging: info
+                    after:
+                        analytics: error
+                        monitoring:
+                            alert:
+                                - 5xx
+                    routes:
+                        /:
+                            GET: get-ping
+                        /version:
+                            GET: get-metadata
+                auth:
+                    before:
+                        auth: token
+                        analytics: default
+                        logging: info
+                    after:
+                        analytics: error
+                        monitoring:
+                            alert:
+                                - 5xx
+                    routes:
+                        /user: # user is an implicit model - we don't need to define it for NoSQL
+                            GET: _ # Perform the default action - GET without an ID means "get all"
+                            POST: _ # create user with an automatic ID
+                            /:user: # Id by convention has the same name as model - this allows automatic use.
+                                GET: _ # get user with the given ID
+                                POST: _ # create user with the given ID
+                                DELETE: _
+                        /conversation:
+                            /:conversation:
                                 GET: _
-                /search:
-                    GET:
-                        _: store
-                        params:
-                            - query
+                                POST: _
+                                /message:
+                                    GET: _
+                                    POST: _
+                                    /:message:
+                                        GET: _
     dev:
-        noAuth:
-            before:
-                logging:
-                    - \*
-        auth:
-            before:
-                logging:
-                    - \*
-            routes:
-                /__explore:
-                    GET:
-                        _: eval
-                        params: res.send(kitchen)
+        default:
+            groups:
+                noAuth:
+                    before:
+                        logging:
+                            - \*
+                auth:
+                    before:
+                        logging:
+                            - \*
+                    routes:
+                        /__explore:
+                            GET:
+                                action: eval
+                                params: res.send(kitchen)
 
 testing:
-    _: !
+    common:
+        something-should-go-here

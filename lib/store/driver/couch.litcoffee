@@ -1,17 +1,24 @@
 
+## Used modules
+
 	_ = require('lodash')
 
-## Module's private variables
+## Variables
 
 	nano = null
 	db = null
 	kitchen = null
+	config = null
 	initializedModels = {}
 
-## Module's private methods
+## Constants
 
-	modelDesignDocName = (model) -> 'layer-cake-model-' + model
-	modelViewName = (model) -> 'by-model-' + model
+	designDocName = 'layer-cake'
+	modelIdViewName = 'model-id'
+
+## Private methods
+
+	modelField = () -> config.modelField or 'layer-cake-model'
 
 	respond = (callback) ->
 		return (err, result) ->
@@ -25,46 +32,70 @@ When requesting a set of model documents we need to check if the implicit model 
 
 Each model is in a different design document which allows creation/updating to be done separately. If they were in the same doc, all the views would have to be rebuilt every time a single one changed or was added.
 
-	updateModelViewIfNeeded = (model, callback) ->
-		return callback() if not _.isUndefined initializedModels[model]
+	getSet = (model, id, next, limit, callback) ->
 
-		modelDesignName = '_design/' + modelDesignDocName(model)
-		db.get modelDesignName, (err, designDoc) ->
-			return callback(err) if err && err.statusCode != 404
+		designDocId = '_design/' + designDocName
 
-			design =
-				views: {}
-			design.views[modelViewName(model)] =
-				map:
-					'function (doc) { if (doc["layer-cake-model"] === "' + model + '") return emit(doc.model, null); }'
+		updateModelIdViewIfNeeded = (model, callback) ->
+			return callback() if not _.isUndefined initializedModels[model]
 
-			# Update the design doc if it has changed or doesn't exist.
-			# These conditions avoid rebuilding the view unnecessarily.
-			if !designDoc
-				designDoc = design
-			else
-				return callback() if _.isEqual(designDoc.views, design.views)
-				designDoc.views = design.views
+			db.get designDocId, (err, designDoc) ->
+				return callback(err) if err && err.statusCode != 404
 
-			db.insert designDoc, modelDesignName, callback
+				design =
+					views: {}
+				field = modelField()
+				design.views[modelIdViewName] =
+					map:
+						'function (doc) {	\
+							model = doc["' + field + '"];	\
+							if (model) {	\
+								return emit([model, doc._id], null);	\
+							}	\
+						}'
 
-	getSet = (model, id, limit, callback) ->
-		updateModelViewIfNeeded model, (err) ->
+				console.log design
+
+				# Update the design doc if it has changed or doesn't exist.
+				# These conditions avoid rebuilding the view unnecessarily.
+				if !designDoc
+					designDoc = design
+				else
+					return callback() if _.isEqual(designDoc.views, design.views)
+					designDoc.views = design.views
+
+				db.insert designDoc, designDocId, callback
+
+		updateModelIdViewIfNeeded model, (err) ->
+
 			if err
-				kitchen.error.raise 'Unexpected error occurred while updating models', err.statusCode
+				console.log err
+				kitchen.error.raise 'Unexpected error occurred while updating models', err.statusCode, err
+
 			params =
-				startKey: id
-				limit: limit
+				startkey: if next then [model, next] else [model]
+				endkey: [model, {}]
+				limit: if limit then parseInt(limit) + 1 else undefined
 				include_docs: true
-			db.view modelDesignDocName(model), modelViewName(model), params, (err, docs) ->
+			console.log params
+
+			console.log designDocName, modelIdViewName
+
+			db.view designDocName, modelIdViewName, params, (err, result) ->
 				return callback(err) if err
-				callback null, _.map docs.rows, (row) -> row.doc
+				docs = _.map result.rows, (row) -> row.doc
+				newNext = undefined
+				if params.limit and docs.length == params.limit
+					console.log docs
+					nextDoc = docs.pop()
+					newNext = nextDoc._id
+				callback null, docs, newNext
 
 	post = (model, id, data, callback) ->
 		doc = _.clone data
 		if id
 			doc._id = id
-		doc["layer-cake-model"] = model
+		doc[modelField()] = model
 
 		respondCallback = respond(callback)
 		db.insert doc, (err, result) ->
@@ -76,23 +107,24 @@ Each model is in a different design document which allows creation/updating to b
 	destroy = (id, rev, callback) ->
 		db.destroy id, rev, respond(callback)
 
-## Module's exported methods
+## Exported methods
 
 	exports.init = (givenKitchen, driverData) ->
 		kitchen = givenKitchen
-		nano = require('nano')(driverData.config.serverUrl)
-		nano.db.create(driverData.config.databaseName)
-		db = nano.db.use(driverData.config.databaseName)
+		config = driverData.config
+		nano = require('nano')(config.serverUrl)
+		nano.db.create(config.databaseName)
+		db = nano.db.use(config.databaseName)
 
-	exports.act = (verb, model, ids, data, callback) ->
-		modelId = ids[model]
+	exports.act = (verb, model, params, data, callback) ->
+		modelId = params[model]
 		id = if modelId then model + '-' + modelId else undefined
 		switch verb
 			when 'GET', 'HEAD'
 				if id
 					get id, callback
 				else
-					getSet model, id, 100, callback
+					getSet model, id, params.next, params.limit, callback
 			when 'POST' then post model, id, data, callback
 			when 'DELETE' then destroy id, data._rev, callback
 			else callback(new Error('Verb ' + verb + ' is not implemented'))
