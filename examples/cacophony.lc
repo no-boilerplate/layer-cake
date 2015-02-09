@@ -43,7 +43,7 @@ store:
                 serverUrl: $CACOPHONY_COUCHDB_SERVER_URL
                 databaseName: $CACOPHONY_COUCHDB_DATABASE_NAME
                 modelField: 'model'
-                createNonModelViewsOnDemand: true
+                createImplicitViews: true
     test:
         default:
             boot:
@@ -88,15 +88,17 @@ http:
                                 GET: _ # get user with the given ID
                                 POST: _ # create user with the given ID
                                 DELETE: _
-                        /conversation:
-                            /:conversation:
-                                GET: _
-                                POST: _
-                                /message:
+                                /conversation:
                                     GET: _
                                     POST: _
-                                    /:message:
+                                    /:conversation:
                                         GET: _
+                                        POST: _
+                                        /message:
+                                            GET: _
+                                            POST: _
+                                            /:message:
+                                                GET: _
     dev:
         default:
             groups:

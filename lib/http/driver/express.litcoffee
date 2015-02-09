@@ -13,17 +13,13 @@
 	builtInFunctions =
 		'_': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
 
-			# Merge req.params and req.query
-			params = _.clone(req.query) or {}
-			params = deepExtend(params, req.params) if req.params
-
-			kitchen.modules.store.default.act req.method, candidateModelName, params, req.body, (err, result, next) ->
+			kitchen.modules.store.default.act req.method, candidateModelName, req.params, req.query, req.body, (err, result, next) ->
 				return res.send(err).status(500) if err
 				response = {}
 				response[candidateModelName] = result
 				response.meta =
 					next: next
-					limit: params.limit
+					limit: req.query.limit
 				res.send(response)
 
 		'get-metadata': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
