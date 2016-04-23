@@ -1,11 +1,11 @@
 
 	_ = require('lodash')
 
-## Module's public variables
+## Public variables
 
 	exports.default = null
 
-## Module's exported methods
+## Exported functions
 
 	exports.init = (kitchen, cake, layer) ->
 		_.each layer, (storeData, name) ->

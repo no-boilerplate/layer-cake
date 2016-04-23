@@ -1,0 +1,18 @@
+cake:
+    build: ../..
+    environment:
+        CAKE_PORT: 5000
+        COUCHDB_SERVER_URL: http://couch:5984
+        COUCHDB_DATABASE_NAME: cacophony
+    ports:
+        - 5000:5000
+    links:
+        - couch
+    volumes:
+        - ./cacophony.lc:/cake/cacophony.lc
+    entrypoint:
+        - coffee
+        - /app/app.litcoffee
+        - /cake/cacophony.lc
+couch:
+    image: klaemo/couchdb

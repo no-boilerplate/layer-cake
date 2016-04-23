@@ -1,10 +1,6 @@
 
 #   LC is YAML
 
-# Reserved characters:
-#   /   -   new route
-#   _   -   the common branch or the default action per underlying store
-
 # Conventions
 #   * Every top-level property should be either a built-in module or an extension module
 #   * All extension modules should have layer-cake-<module name> npm name
@@ -14,14 +10,15 @@
 
 metadata:
     common:
-        version:    1.0.0.0
+        name:       LayerCake Cacophony Example
+        version:    0.0.0.1
         author:     Ivan Erceg
     dev:
         env:    $NODE_ENV
 
 config:
     common:
-        port: $PORT
+        port: $CAKE_PORT
         logging:
             - warn
             - error
@@ -40,14 +37,19 @@ store:
         default:
             driver: couch
             config:
-                serverUrl: $CACOPHONY_COUCHDB_SERVER_URL
-                databaseName: $CACOPHONY_COUCHDB_DATABASE_NAME
-                modelField: 'model'
+                serverUrl: $COUCHDB_SERVER_URL
+                databaseName: $COUCHDB_DATABASE_NAME
+                modelField: model
                 createImplicitViews: true
     test:
         default:
             boot:
                 - test-populate  # Idempotent
+
+#
+# Special characters:
+#   /   -   new route
+#
 
 http:
     common:

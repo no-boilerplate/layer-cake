@@ -1,8 +1,8 @@
 
 # HTTP Express driver
 
-	express = require('express')
 	_ = require('lodash')
+	express = require('express')
 	async = require('async')
 	deepExtend = require('deep-extend')
 
@@ -12,7 +12,6 @@
 
 	builtInFunctions =
 		'_': (kitchen, handlerData, req, res, candidateModelName, nextFn) ->
-
 			kitchen.modules.store.default.act req.method, candidateModelName, req.params, req.query, req.body, (err, result, next) ->
 				return res.send(err).status(500) if err
 				response = {}
@@ -93,7 +92,7 @@ Add Express app object routes and resolve early all the functions that will have
 		_.each group.routes, (routeData, route) ->
 			resolveRoute '', route, routeData
 
-## Module's exported methods
+## Exported functions
 
 	exports.init = (kitchen, driverData) ->
 		app = express()
